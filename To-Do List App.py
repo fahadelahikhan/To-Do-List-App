@@ -1,166 +1,186 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
-from datetime import datetime
+from tkinter import messagebox
 
 
 class TodoApp:
     def __init__(self):
+        # Create the main window
         self.window = tk.Tk()
-        self.window.title("Task Manager")
-        self.window.geometry("500x600")
-        self.window.minsize(400, 500)
-        self.setup_ui()
+        self.window.title("My To-Do List")
+        self.window.geometry("400x500")  # Set initial window size
+        self.window.minsize(350, 400)  # Set minimum window size
 
-    def setup_ui(self):
-        # Configure style
-        style = ttk.Style()
-        style.theme_use('clam')
-
-        # Main frame
-        main_frame = ttk.Frame(self.window, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-
-        # Configure grid weights for responsiveness
-        self.window.columnconfigure(0, weight=1)
+        # Configure the window to be resizable
         self.window.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(2, weight=1)
+        self.window.columnconfigure(0, weight=1)
 
-        # Title
-        title_label = ttk.Label(main_frame, text="Task Manager",
-                                font=('Arial', 16, 'bold'))
-        title_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
+        # Create the main frame
+        self.main_frame = tk.Frame(self.window)
+        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Input section
-        input_frame = ttk.Frame(main_frame)
-        input_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
-        input_frame.columnconfigure(0, weight=1)
+        # Initialize instance attributes that will be created in setup_widgets
+        self.task_listbox = None
+        self.task_entry = None
+        self.count_label = None
 
-        self.task_entry = ttk.Entry(input_frame, font=('Arial', 11))
-        self.task_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
-        self.task_entry.bind('<Return>', self.add_task)
+        self.setup_widgets()
 
-        self.add_btn = ttk.Button(input_frame, text="Add Task", command=self.add_task)
-        self.add_btn.grid(row=0, column=1)
+    def setup_widgets(self):
+        # Title label
+        title_label = tk.Label(
+            self.main_frame,
+            text="My To-Do List",
+            font=("Arial", 16, "bold")
+        )
+        title_label.pack(pady=(0, 10))
 
-        # Task list with scrollbar
-        list_frame = ttk.Frame(main_frame)
-        list_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
-        list_frame.columnconfigure(0, weight=1)
-        list_frame.rowconfigure(0, weight=1)
+        # Frame for the listbox and scrollbar
+        listbox_frame = tk.Frame(self.main_frame)
+        listbox_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+
+        # Create scrollbar for the listbox
+        scrollbar = tk.Scrollbar(listbox_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Create listbox with scrollbar
-        self.task_listbox = tk.Listbox(list_frame, selectmode=tk.SINGLE,
-                                       font=('Arial', 10), height=15)
-        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.task_listbox.yview)
-        self.task_listbox.configure(yscrollcommand=scrollbar.set)
+        self.task_listbox = tk.Listbox(
+            listbox_frame,
+            selectmode=tk.SINGLE,
+            yscrollcommand=scrollbar.set,
+            font=("Arial", 10),
+            height=15
+        )
+        self.task_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.task_listbox.yview)
 
-        self.task_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        # Frame for entry and add button
+        entry_frame = tk.Frame(self.main_frame)
+        entry_frame.pack(fill=tk.X, pady=(0, 10))
 
-        # Button frame
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, columnspan=3, pady=(10, 0))
+        # Entry widget for new tasks
+        self.task_entry = tk.Entry(
+            entry_frame,
+            font=("Arial", 10),
+            width=30
+        )
+        self.task_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
 
-        self.remove_btn = ttk.Button(button_frame, text="Remove Selected",
-                                     command=self.remove_task, state='disabled')
-        self.remove_btn.grid(row=0, column=0, padx=(0, 10))
+        # Bind Enter key to add task
+        self.task_entry.bind('<Return>', lambda event: self.add_task())
 
-        self.clear_btn = ttk.Button(button_frame, text="Clear All",
-                                    command=self.clear_all_tasks)
-        self.clear_btn.grid(row=0, column=1, padx=(0, 10))
+        # Add task button
+        add_btn = tk.Button(
+            entry_frame,
+            text="Add Task",
+            command=self.add_task,
+            bg="#4CAF50",
+            fg="white",
+            font=("Arial", 9, "bold")
+        )
+        add_btn.pack(side=tk.RIGHT)
 
-        self.mark_done_btn = ttk.Button(button_frame, text="Mark Done",
-                                        command=self.mark_task_done, state='disabled')
-        self.mark_done_btn.grid(row=0, column=2)
+        # Frame for action buttons
+        button_frame = tk.Frame(self.main_frame)
+        button_frame.pack(fill=tk.X)
 
-        # Status bar
-        self.status_var = tk.StringVar()
-        self.status_var.set("Ready")
-        status_bar = ttk.Label(main_frame, textvariable=self.status_var,
-                               relief=tk.SUNKEN, anchor=tk.W)
-        status_bar.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
+        # Remove task button
+        remove_btn = tk.Button(
+            button_frame,
+            text="Remove Selected Task",
+            command=self.remove_task,
+            bg="#f44336",
+            fg="white",
+            font=("Arial", 9, "bold")
+        )
+        remove_btn.pack(side=tk.LEFT, padx=(0, 5))
 
-        # Bind listbox selection event
-        self.task_listbox.bind('<<ListboxSelect>>', self.on_task_select)
+        # Clear all tasks button
+        clear_btn = tk.Button(
+            button_frame,
+            text="Clear All Tasks",
+            command=self.clear_all_tasks,
+            bg="#FF9800",
+            fg="white",
+            font=("Arial", 9, "bold")
+        )
+        clear_btn.pack(side=tk.LEFT)
 
-        # Focus on entry
-        self.task_entry.focus()
+        # Task count label
+        self.count_label = tk.Label(
+            button_frame,
+            text="Tasks: 0",
+            font=("Arial", 9),
+            fg="gray"
+        )
+        self.count_label.pack(side=tk.RIGHT)
 
-    def add_task(self, event=None):
+    def add_task(self):
+        """Add a new task to the list"""
         task_text = self.task_entry.get().strip()
-        if task_text:
-            # Add timestamp for better organization
-            timestamp = datetime.now().strftime("%H:%M")
-            formatted_task = f"[{timestamp}] {task_text}"
 
-            self.task_listbox.insert(tk.END, formatted_task)
+        if task_text:
+            # Check if task already exists
+            current_tasks = self.task_listbox.get(0, tk.END)
+            if task_text in current_tasks:
+                messagebox.showwarning("Duplicate Task", "This task already exists!")
+                return
+
+            # Add the task to the listbox
+            self.task_listbox.insert(tk.END, task_text)
             self.task_entry.delete(0, tk.END)
-            self.update_status(f"Task added: {task_text}")
-            self.update_button_states()
+            self.update_task_count()
+
+            # Auto-scroll to the bottom to show new task
+            self.task_listbox.see(tk.END)
         else:
-            messagebox.showwarning("Warning", "Please enter a task!")
+            messagebox.showwarning("Empty Task", "Please enter a task before adding!")
 
     def remove_task(self):
-        try:
-            selected_indices = self.task_listbox.curselection()
-            if selected_indices:
-                index = selected_indices[0]
-                task_text = self.task_listbox.get(index)
-                self.task_listbox.delete(index)
-                self.update_status(f"Task removed: {task_text.split('] ', 1)[-1]}")
-                self.update_button_states()
-            else:
-                messagebox.showinfo("Info", "Please select a task to remove!")
-        except tk.TclError:
-            messagebox.showerror("Error", "Failed to remove task!")
+        """Remove the selected task from the list"""
+        selected_indices = self.task_listbox.curselection()
 
-    def mark_task_done(self):
-        try:
-            selected_indices = self.task_listbox.curselection()
-            if selected_indices:
-                index = selected_indices[0]
-                current_task = self.task_listbox.get(index)
+        if selected_indices:
+            # Get the selected task text for confirmation
+            selected_task = self.task_listbox.get(selected_indices[0])
 
-                if not current_task.startswith("✓"):
-                    completed_task = f"✓ {current_task}"
-                    self.task_listbox.delete(index)
-                    self.task_listbox.insert(index, completed_task)
-                    self.task_listbox.selection_set(index)
-                    self.update_status("Task marked as completed!")
-                else:
-                    messagebox.showinfo("Info", "Task is already marked as done!")
-            else:
-                messagebox.showinfo("Info", "Please select a task to mark as done!")
-        except tk.TclError:
-            messagebox.showerror("Error", "Failed to mark task as done!")
+            # Ask for confirmation
+            confirm = messagebox.askyesno(
+                "Confirm Delete",
+                f"Are you sure you want to remove:\n'{selected_task}'?"
+            )
+
+            if confirm:
+                self.task_listbox.delete(selected_indices[0])
+                self.update_task_count()
+        else:
+            messagebox.showinfo("No Selection", "Please select a task to remove!")
 
     def clear_all_tasks(self):
+        """Clear all tasks from the list"""
         if self.task_listbox.size() > 0:
-            result = messagebox.askyesno("Confirm", "Are you sure you want to clear all tasks?")
-            if result:
+            confirm = messagebox.askyesno(
+                "Clear All Tasks",
+                "Are you sure you want to remove all tasks?"
+            )
+
+            if confirm:
                 self.task_listbox.delete(0, tk.END)
-                self.update_status("All tasks cleared!")
-                self.update_button_states()
+                self.update_task_count()
         else:
-            messagebox.showinfo("Info", "No tasks to clear!")
+            messagebox.showinfo("Empty List", "There are no tasks to clear!")
 
-    def on_task_select(self, event):
-        self.update_button_states()
-
-    def update_button_states(self):
-        has_selection = bool(self.task_listbox.curselection())
-        has_tasks = self.task_listbox.size() > 0
-
-        self.remove_btn.config(state='normal' if has_selection else 'disabled')
-        self.mark_done_btn.config(state='normal' if has_selection else 'disabled')
-        self.clear_btn.config(state='normal' if has_tasks else 'disabled')
-
-    def update_status(self, message):
-        self.status_var.set(message)
-        self.window.after(3000, lambda: self.status_var.set("Ready"))
+    def update_task_count(self):
+        """Update the task count display"""
+        count = self.task_listbox.size()
+        self.count_label.config(text=f"Tasks: {count}")
 
     def run(self):
+        """Start the application"""
+        # Focus on the entry widget when app starts
+        self.task_entry.focus()
+        # Update initial task count
+        self.update_task_count()
+        # Start the main event loop
         self.window.mainloop()
 
 
